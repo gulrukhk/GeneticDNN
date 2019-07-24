@@ -1,0 +1,9 @@
+*.py~
+*.pyc
+*.pkl
+results/history/*
+results/models/*
+analysis/results/*
+*.pdf
+*.hdf5
+*.ckpt
