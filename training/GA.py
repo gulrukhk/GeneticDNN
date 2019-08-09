@@ -5,14 +5,13 @@ import copy
 import numpy as np
 
 class GA():
-   def __init__(self, model, mutation_rate=0.01):
+   def __init__(self, arch, mutation_rate=0.01, mutation_power=0.02):
      #super(GA, self).__init__()
      self.mutation_rate= mutation_rate 
-     self.mutation_power = 0.02
+     self.mutation_power = mutation_power
      self.weight_init= torch.nn.init.xavier_uniform_
-     self.model = model
-     self.num_parents = 1
-     self.num_child = 4
+     self.arch = arch
+     self.size = self.count_parameters(arch())
           
    def count_parameters(self, model):
      return sum(p.numel() for p in model.parameters())
@@ -22,10 +21,10 @@ class GA():
       self.weight_init(m.weight)
       m.bias.data.fill_(0.00)
    
-   def random_population(self):
+   def random_population(self, num_parents):
      parents = []
-     for _ in range(self.num_parents):
-        parent = self.model
+     for _ in range(num_parents):
+        parent = self.arch()
         parent.cuda()
         for param in parent.parameters():
             param.requires_grad = False
@@ -36,10 +35,9 @@ class GA():
    def mutate(self, parent):
      child = copy.deepcopy(parent)
      param_size = self.count_parameters(parent)
-     genes_to_mutate = []
-     for m in np.arange(int(param_size * self.mutation_rate)):
-       genes_to_mutate.append(np.random.randint(param_size))
-     genes_to_mutate = sorted(genes_to_mutate)
+     mutation_size = int(param_size * self.mutation_rate)
+     genes_to_mutate = np.random.randint(param_size, size=mutation_size)
+     #genes_to_mutate = sorted(genes_to_mutate)
      index = 0
      for p in child.parameters():
        for gene in genes_to_mutate[index:]:
@@ -49,9 +47,9 @@ class GA():
            index +=1
      return child
  
-   def return_children(self, parent):
+   def return_children(self, parent, num_children):
      children = []
-     for i in range(self.num_child):
+     for i in range(num_children):
        children.append(self.mutate(parent))
      return children
 
