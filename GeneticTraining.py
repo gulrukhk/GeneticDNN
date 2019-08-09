@@ -32,7 +32,7 @@ import argparse
 
 def get_parser():
   parser = argparse.ArgumentParser(description='GA Params' )
-  parser.add_argument('--epochs', action='store', type=int, default=5000, help='Number of epochs to train for.')
+  parser.add_argument('--epochs', action='store', type=int, default=1000, help='Number of epochs to train for.')
   parser.add_argument('--batch_size', action='store', type=int, default=128, help='batch size per update')
   parser.add_argument('--train_ratio', action='store', default=0.9, help='test train ratio')
   parser.add_argument('--shuffle', action='store', default=False, help='shuffle data')
@@ -46,7 +46,7 @@ def get_parser():
   parser.add_argument('--particles', nargs='+', default=['Ele'], help='particles used in training (Types should be written without quotes delimited by spaces)')
   parser.add_argument('--dim', action='store', type=int, default=2, help='Number of data dimensions to use')
   parser.add_argument('--dformat', action='store', type=str, default='channels_first')
-  parser.add_argument('--name', action='store', type=str, default="GA_plan2_time_3epochs", help='identifier for a training')
+  parser.add_argument('--name', action='store', type=str, default="GA_mp_1", help='identifier for a training')
   return parser
 
 # percentage loss
@@ -76,14 +76,16 @@ def get_mutation_rate_plan3(mu, epoch, size): #plan 3
    else:
      return 0.1
 
+#@profile
 def get_mutation_rate_plan1(mu, epoch, size): #plan 1
-   time.sleep(1)
    return 1.0
 
-@profile
+#@profile
 def get_mutation_rate_plan2(mu, epoch, size): #plan 2
-   time.sleep(1)
    return 0.1
+
+def get_mutation_power(mp, epoch, total_epochs):
+   return 0.1 * np.exp(-6.9 * epoch/total_epochs)
 
 def training():
    parser = get_parser()
@@ -105,12 +107,15 @@ def training():
    dim = params.dim
    dformat = params.dformat
    input_shape = get_input_shape(dformat, dim)
+   
    # define GA training object
    ga = GA(arch=arch, mutation_rate = mutation_rate, mutation_power = mutation_power)
-   #summary(ga.arch().cuda(), input_size=input_shape)
+   ga.num_parents = num_parents
+   ga.num_children = num_children
+   summary(ga.arch().cuda(), input_size=input_shape)
    print('The number of paramerets is {}.'.format(ga.size))
    # create random population
-   parents = ga.random_population(num_parents)
+   parents = ga.random_population()
    criterion = mape
    
    train_files, test_files = divide_train_test(datapath, particles, train_ratio)
@@ -120,10 +125,11 @@ def training():
    test_loss_list = []
    time_list =[]
    best_loss = 100
-   for epoch in range(3):#epochs):
+   for epoch in range(epochs):
      epoch_init = time.time()
      ga.mutation_rate = get_mutation_rate_plan2(ga.mutation_rate, epoch, ga.size)
-     print('Epoch={} Mutation rate = {}'.format(epoch, ga.mutation_rate))
+     ga.mutation_power = get_mutation_power(ga.mutation_power, epoch, epochs)
+     print('Epoch={} Mutation rate = {} Mutation power = {}'.format(epoch, ga.mutation_rate, ga.mutation_power))
      # Test the model
      test_loader = HDF5generator(test_files, batch_size=batch_size, shuffle=shuffle, num_events=20000)
      loss =[]
@@ -140,7 +146,7 @@ def training():
                 best_parent = model
                 print('best parent', best_loss)
           parents = []      
-        children = ga.return_children(best_parent, num_children)
+        children = ga.return_children(best_parent)
         for model in children:
            model.eval()
            with torch.no_grad():
