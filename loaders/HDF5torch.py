@@ -32,7 +32,6 @@ class HDF5generator():
        self.yscale = 100.0 # primary energy division factor
        self.dscale=1 # remove any scaling already present in dataset
        self.d=2 # number of dimensions for image
-       #self.data = self.read_data(self.fiter.next()) # read initial file
        self.data = self.read_data(next(self.fiter))
        self.num_batches_loaded = int(self.file_events/self.batch_size) # number of batches in cache
        self.total_batches = int(self.num_events/self.batch_size)# total batches
@@ -51,6 +50,7 @@ class HDF5generator():
           if self.index >= (self.num_batches_loaded * self.batch_size):
               for key in self.data:
                   batch[key]=self.data[key][self.index:self.batch_size + self.index] # get remaining events in batch
+              self.data ={}
               self.data = self.read_data(next(self.fiter)) # read data from next file
               for i, key in enumerate(self.data): 
                   self.data[key] = torch.cat((batch[key], self.data[key]), 0) # concatenate remaining events to new data
