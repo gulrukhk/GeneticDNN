@@ -12,6 +12,8 @@ class GA():
      self.weight_init= torch.nn.init.xavier_uniform_
      self.arch = arch
      self.size = self.count_parameters(arch())
+     self.num_parents = 1
+     self.num_children = 4
           
    def count_parameters(self, model):
      return sum(p.numel() for p in model.parameters())
@@ -21,9 +23,9 @@ class GA():
       self.weight_init(m.weight)
       m.bias.data.fill_(0.00)
    
-   def random_population(self, num_parents):
+   def random_population(self):
      parents = []
-     for _ in range(num_parents):
+     for _ in range(self.num_parents):
         parent = self.arch()
         parent.cuda()
         for param in parent.parameters():
@@ -47,9 +49,9 @@ class GA():
            index +=1
      return child
  
-   def return_children(self, parent, num_children):
+   def return_children(self, parent):
      children = []
-     for i in range(num_children):
+     for i in range(self.num_children):
        children.append(self.mutate(parent))
      return children
 
